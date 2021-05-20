@@ -1,15 +1,15 @@
 import sys
 import argparse
 import os
-import glob 
+import fnmatch
 
 
 def createParser ():
     parser = argparse.ArgumentParser()
-    parser.add_argument ('--path', '-p')
-    parser.add_argument ('--name', '-n', default='*')
-    parser.add_argument ('--delete', '-d', action='store_true', default=False)
-    parser.add_argument ('--info', '-i', action='store_true', default=False)    
+    parser.add_argument ('--path', '-p', help='directory path')
+    parser.add_argument ('--name', '-n', default='*', help='file name')
+    parser.add_argument ('--delete', '-d', action='store_true', default=False, help='delete found files')
+    parser.add_argument ('--info', '-i', action='store_true', default=False, help='debug information')    
  
     return parser
 
@@ -27,12 +27,10 @@ def treatment_path(space):
 
 
 def find_item(space):
-    items = glob.glob(space.path + '/' + space.name)
-    if (len(items) > 0): 
-        for item in items:
-            print('found: %s'%item)
-    else: 
-        print('nothing was found')
+    items = []
+    for root, dirnames, filenames in os.walk(space.path):
+        for filename in fnmatch.filter(filenames, space.name):
+            items.append(os.path.abspath(os.path.join(root, filename)))
     
     return items
 
@@ -46,10 +44,20 @@ def find(space, session_acess):
                     try:
                         os.remove(item)
                         print('deleted: %s' %item)
-                    except Exception:
-                        pass
+                    except OSError as err:
+                        print('failed to delete file')
+                        print("OS error: {0}".format(err))
+                    except:
+                        print("Unexpected error:", sys.exc_info()[0])
+                        raise
             else:
                 print('no access rights to change directory')
+        else:
+            if (len(items) > 0): 
+                for item in items:
+                    print('found: %s'%item)
+            else: 
+                print('nothing was found') 
     else:
         print('path not available')
         
@@ -63,6 +71,5 @@ if __name__ == '__main__':
     find(namespace, session_acess)  
 
     if (namespace.info):
-        # print test value
-        print ("{}".format (namespace))
+        print('{}'.format(namespace))
         print(session_acess)
